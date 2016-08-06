@@ -1,0 +1,45 @@
+{
+    "name": "somnambulist/laravel-doctrine-domain-events",
+    "type": "library",
+    "description": "Adds domain events to Doctrine entities.",
+    "keywords": [
+        "doctrine",
+        "laravel",
+        "laravel-doctrine",
+        "validation",
+        "domain events"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Dave Redfern",
+            "email": "dave@scorpioframework.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Somnambulist\\DomainEvents\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Somnambulist\\Tests\\DomainEvents\\": "tests/"
+        },
+        "classmap": [
+            "tests/_data/"
+        ],
+        "files": [
+            "tests/_data/helpers.php"
+        ]
+    },
+    "require": {
+        "php": ">=5.5.9",
+        "illuminate/validation": "5.2.*|5.3.*",
+        "laravel-doctrine/orm": "1.*",
+        "somnambulist/laravel-domain-input-mapper": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~5.4",
+        "illuminate/config": "~5.1"
+    }
+}
