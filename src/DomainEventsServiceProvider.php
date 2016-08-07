@@ -16,7 +16,7 @@
  * and is licensed under the MIT license.
  */
 
-namespace Somnambulist\EntityValidation;
+namespace Somnambulist\DomainEvents;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -24,7 +24,7 @@ use Illuminate\Support\ServiceProvider;
  * Class ValidationServiceProvider
  *
  * @package    Somnambulist\Doctrine
- * @subpackage Somnambulist\EntityValidation\ValidationServiceProvider
+ * @subpackage Somnambulist\DomainEvents\ValidationServiceProvider
  * @author     Dave Redfern
  */
 class DomainEventsServiceProvider extends ServiceProvider
