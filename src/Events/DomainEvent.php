@@ -40,7 +40,7 @@ abstract class DomainEvent extends EventArgs
     private $name;
 
     /**
-     * @var array
+     * @var Immutable
      */
     private $properties;
 
@@ -109,6 +109,14 @@ abstract class DomainEvent extends EventArgs
         $parts = explode("\\", $class);
 
         return end($parts);
+    }
+
+    /**
+     * @return Immutable
+     */
+    public function getProperties()
+    {
+        return $this->properties;
     }
 
     /**
