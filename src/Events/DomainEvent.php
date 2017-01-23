@@ -20,7 +20,7 @@ namespace Somnambulist\DomainEvents\Events;
 
 use Doctrine\Common\EventArgs;
 use Somnambulist\DomainEvents\Exceptions\InvalidPropertyException;
-use Somnambulist\Domain\Collection\Immutable;
+use Somnambulist\Collection\Immutable;
 
 /**
  * Class DomainEvent

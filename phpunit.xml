@@ -20,4 +20,9 @@
         <var name="DOCTRINE_PASSWORD" value=""/>
         <var name="DOCTRINE_HOST" value=""/>
     </php>
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">./src</directory>
+        </whitelist>
+    </filter>
 </phpunit>

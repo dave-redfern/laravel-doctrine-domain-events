@@ -33,7 +33,7 @@
         ]
     },
     "require": {
-        "php": ">=5.5.9",
+        "php": ">=5.6.0",
         "illuminate/validation": "5.2.*|5.3.*",
         "laravel-doctrine/orm": "1.*",
         "somnambulist/laravel-domain-input-mapper": "*"
