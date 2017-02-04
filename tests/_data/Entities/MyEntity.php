@@ -1,6 +1,7 @@
 <?php
 
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * Class MyEntity
@@ -24,6 +25,9 @@ class MyEntity implements \Somnambulist\DomainEvents\Contracts\RaisesDomainEvent
     /** @ORM\Column(type="datetime", name="created_at") */
     protected $createdAt;
 
+    /** @ORM\OneToMany(targetEntity="MyOtherEntity", mappedBy="myEntity", cascade={"persist", "remove", "merge"}, orphanRemoval=true) */
+    protected $related;
+
     /**
      * Constructor.
      *
@@ -38,6 +42,7 @@ class MyEntity implements \Somnambulist\DomainEvents\Contracts\RaisesDomainEvent
         $this->name      = $name;
         $this->another   = $another;
         $this->createdAt = $createdAt;
+        $this->related   = new ArrayCollection();
 
         $this->raise(new MyEntityCreatedEvent(['id' => $id, 'name' => $name, 'another' => $another]));
     }
@@ -47,6 +52,21 @@ class MyEntity implements \Somnambulist\DomainEvents\Contracts\RaisesDomainEvent
         $this->name = $name;
 
         $this->raise(new MyEntityNameUpdatedEvent(['id' => $this->id, 'new' => $name, 'previous' => $this->name]));
+    }
+
+    public function addRelated($name, $another, $createdAt)
+    {
+        $this->related->add(new MyOtherEntity($this, $name, $another, $createdAt));
+
+        $this->raise(new MyEntityAddedAnotherEntity([
+            'id'    => $this->id,
+            'name'  => $this->name,
+            'other' => [
+                'name'       => $name,
+                'another'    => $another,
+                'created_at' => $createdAt,
+            ],
+        ]));
     }
 
     /**
@@ -79,5 +99,13 @@ class MyEntity implements \Somnambulist\DomainEvents\Contracts\RaisesDomainEvent
     public function getCreatedAt()
     {
         return $this->createdAt;
+    }
+
+    /**
+     * @return ArrayCollection
+     */
+    public function getRelated()
+    {
+        return $this->related;
     }
 }

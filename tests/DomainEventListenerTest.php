@@ -22,14 +22,16 @@ class DomainEventListenerTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * @group listener
-     * @group domain-events
+     * @var EntityManager
      */
-    public function testFiresEvents()
+    protected $em;
+
+    protected function setUp()
     {
         $evm = new EventManager();
         $evm->addEventSubscriber(new DomainEventListener());
         $evm->addEventListener('onMyEntityCreated', new \EventListener());
+        $evm->addEventListener('onMyEntityAddedAnotherEntity', new \EventListener());
 
         $conn = [
             'driver'   => $GLOBALS['DOCTRINE_DRIVER'],
@@ -55,21 +57,65 @@ class DomainEventListenerTest extends \PHPUnit_Framework_TestCase
         try {
             $schemaTool->createSchema([
                 $em->getClassMetadata(\MyEntity::class),
+                $em->getClassMetadata(\MyOtherEntity::class),
             ]);
         } catch (\Exception $e) {
-            if ($GLOBALS['DOCTRINE_DRIVER'] != 'pdo_mysql' ||
-                !($e instanceof \PDOException && strpos(
-                        $e->getMessage(), 'Base table or view already exists'
-                    ) !== false)
+            if (
+                $GLOBALS['DOCTRINE_DRIVER'] != 'pdo_mysql' ||
+                !($e instanceof \PDOException && strpos($e->getMessage(), 'Base table or view already exists') !== false)
             ) {
                 throw $e;
             }
         }
 
+        $this->em = $em;
+    }
+
+    protected function tearDown()
+    {
+        $this->em = null;
+    }
+
+
+
+    /**
+     * @group listener
+     * @group domain-events
+     */
+    public function testFiresEvents()
+    {
         $entity = new \MyEntity('test-id', 'test', 'bob', Carbon::now());
-        $em->persist($entity);
-        $this->expectOutputString('New item created with id: test-id, name: test, another: bob');
-        $em->flush();
+        $this->em->persist($entity);
+        $this->expectOutputString("New item created with id: test-id, name: test, another: bob\n");
+        $this->em->flush();
+
+        $this->assertCount(0, $entity->releaseAndResetEvents());
+    }
+
+    /**
+     * @group listener
+     * @group domain-events
+     */
+    public function testFiresEventsWhenRelatedEntitiesChangedButRootNot()
+    {
+        $entity = new \MyEntity('test-id', 'test', 'bob', Carbon::now());
+        $this->em->persist($entity);
+        $this->em->flush();
+
+        $this->assertCount(0, $entity->releaseAndResetEvents());
+
+        $this->getActualOutput();
+
+        sleep(1);
+
+        $entity->addRelated('example', 'test-test', Carbon::now());
+
+        $this->em->flush();
+
+        $expected  = "New item created with id: test-id, name: test, another: bob\n";
+        $expected .= "Added related entity with name: example, another: test-test to entity id: test-id\n";
+
+        $this->expectOutputString($expected);
 
         $this->assertCount(0, $entity->releaseAndResetEvents());
     }

@@ -19,8 +19,8 @@
 namespace Somnambulist\DomainEvents;
 
 use Doctrine\Common\EventSubscriber;
-use Doctrine\ORM\Event\LifecycleEventArgs;
 use Doctrine\ORM\Event\PostFlushEventArgs;
+use Doctrine\ORM\Event\PreFlushEventArgs;
 use Doctrine\ORM\Events;
 use Somnambulist\DomainEvents\Contracts\RaisesDomainEvents;
 
@@ -46,31 +46,25 @@ class DomainEventListener implements EventSubscriber
      */
     public function getSubscribedEvents()
     {
-        return [Events::postPersist, Events::postUpdate, Events::postRemove, Events::postFlush];
+        return [Events::preFlush, Events::postFlush];
     }
 
     /**
-     * @param LifecycleEventArgs $event
+     * @param PreFlushEventArgs $event
      */
-    public function postPersist(LifecycleEventArgs $event)
+    public function preFlush(PreFlushEventArgs $event)
     {
-        $this->keepAggregateRoots($event);
-    }
+        $uow = $event->getEntityManager()->getUnitOfWork();
 
-    /**
-     * @param LifecycleEventArgs $event
-     */
-    public function postUpdate(LifecycleEventArgs $event)
-    {
-        $this->keepAggregateRoots($event);
-    }
+        foreach ($uow->getIdentityMap() as $class => $entities) {
+            if (!in_array(RaisesDomainEvents::class, class_implements($class))) {
+                continue;
+            }
 
-    /**
-     * @param LifecycleEventArgs $event
-     */
-    public function postRemove(LifecycleEventArgs $event)
-    {
-        $this->keepAggregateRoots($event);
+            foreach ($entities as $entity) {
+                $this->entities[] = $entity;
+            }
+        }
     }
 
     /**
@@ -78,31 +72,18 @@ class DomainEventListener implements EventSubscriber
      */
     public function postFlush(PostFlushEventArgs $event)
     {
-        $entityManager = $event->getEntityManager();
-        $evm           = $entityManager->getEventManager();
+        $em  = $event->getEntityManager();
+        $evm = $em->getEventManager();
 
         foreach ($this->entities as $entity) {
-            $class = $entityManager->getClassMetadata(get_class($entity));
-            foreach ($entity->releaseAndResetEvents() as $domainEvent) {
-                $domainEvent->setAggregate($class->name, $class->getSingleIdReflectionProperty()->getValue($entity));
-                $evm->dispatchEvent("on" . $domainEvent->getName(), $domainEvent);
+            $class = $em->getClassMetadata(get_class($entity));
+
+            foreach ($entity->releaseAndResetEvents() as $event) {
+                $event->setAggregate($class->name, $class->getSingleIdReflectionProperty()->getValue($entity));
+                $evm->dispatchEvent("on" . $event->getName(), $event);
             }
         }
 
-        $this->entities = array();
-    }
-
-    /**
-     * @param LifecycleEventArgs $event
-     */
-    private function keepAggregateRoots(LifecycleEventArgs $event)
-    {
-        $entity = $event->getEntity();
-
-        if (!($entity instanceof RaisesDomainEvents)) {
-            return;
-        }
-
-        $this->entities[] = $entity;
+        $this->entities = [];
     }
 }

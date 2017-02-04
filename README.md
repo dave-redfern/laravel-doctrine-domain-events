@@ -27,7 +27,7 @@ Install using composer, or checkout / pull the files from github.com.
 A service provider is included that adds compiles allowing the main classes to be
 added to the main bootstrap.
 
- * _Note_: the DomainEventListener should be configured per entity manager instance.
+ * __Note__: the DomainEventListener should be configured per entity manager instance.
 
 ### Raising Events
 
@@ -61,7 +61,34 @@ up to you.
         $this->raise(new MyEntityCreatedEvent(['id' => $id, 'name' => $name, 'another' => $another]));
     }
 
-### Creating a Listener
+### Firing Domain Events
+
+This implementation includes a Doctrine subscriber that will listen for entities that
+implement the RaisesDomainEvent interface and then ensure that `releaseAndResetEvents()`
+is called.
+
+ * __Note:__ before v. 0.6 the subscriber listened for LifeCycle events and could miss
+   events if the Aggregate root was not modified at the same time as the child entities.
+ 
+ * __Note:__ it is not required to use the `DomainEventListener` subscriber. You can
+   implement your own event dispatcher, use your another entirely (the frameworks) and
+   then manually trigger the domain events by flushing the changes and then manually
+   calling `releaseAndResetEvents` and dispatching the events.
+   
+   If you do this note that the aggregate root class and primary identifier (if used)
+   will not be set automatically. You will need to update your code to set these if
+   you intend to use them.
+
+To use the included listener, simply add it to your list of event subscribers in the
+Doctrine configuration. This is per entity manager.
+
+ * __Note:__ to use listeners with domain events that rely on Doctrine repositories
+   it is necessary to defer loading those subscribers until after Doctrine has been
+   resolved. Within Laravel, this can be done during a service provider `boot` method.
+   See [Laravel Doctrine Project](https://github.com/dave-redfern/laravel-doctrine-project)
+   for an example deferred loader.
+
+### Creating a Domain Event Listener
 
 Listeners can have their own dependencies (constructor is not defined), and are called
 after the onFlush Unit of Work event. The listener can perform any post processing as
