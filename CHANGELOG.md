@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+2017-03-31
+----------
+
+Changed:
+
+ * Added context and version to domain event
+ * Added default arguments to domain event constructor
+ * setAggregateRoot will only set properties if they are empty
+
 2017-02-03
 ----------
 

@@ -45,6 +45,11 @@ abstract class DomainEvent extends EventArgs
     private $properties;
 
     /**
+     * @var Immutable
+     */
+    private $context;
+
+    /**
      * @var string
      */
     private $aggregateClass;
@@ -53,6 +58,11 @@ abstract class DomainEvent extends EventArgs
      * @var string
      */
     private $aggregateId;
+
+    /**
+     * @var int
+     */
+    private $version;
 
     /**
      * @var float
@@ -64,12 +74,16 @@ abstract class DomainEvent extends EventArgs
     /**
      * Constructor.
      *
-     * @param array $properties
+     * @param array $payload Array of specific state change data
+     * @param array $context Array of additional data providing context e.g. user, ip etc
+     * @param int   $version A version identifier for the payload format
      */
-    public function __construct(array $properties)
+    public function __construct(array $payload = [], array $context = [], $version = 1)
     {
-        $this->properties = new Immutable($properties);
+        $this->properties = new Immutable($payload);
+        $this->context    = new Immutable($context);
         $this->time       = microtime(true);
+        $this->version    = $version;
     }
 
     /**
@@ -120,17 +134,19 @@ abstract class DomainEvent extends EventArgs
     }
 
     /**
-     * @param string $name
-     *
-     * @return mixed
+     * @return Immutable
      */
-    public function getProperty($name)
+    public function getContext()
     {
-        if (!$this->properties->has($name)) {
-            throw InvalidPropertyException::propertyDoesNotExist($name);
-        }
+        return $this->context;
+    }
 
-        return $this->properties->get($name);
+    /**
+     * @return int
+     */
+    public function getVersion()
+    {
+        return $this->version;
     }
 
     /**
@@ -149,13 +165,31 @@ abstract class DomainEvent extends EventArgs
         return $this->aggregateId;
     }
 
+
+
+    /**
+     * @param string $name
+     *
+     * @return mixed
+     */
+    public function getProperty($name)
+    {
+        if (!$this->properties->has($name)) {
+            throw InvalidPropertyException::propertyDoesNotExist($name);
+        }
+
+        return $this->properties->get($name);
+    }
+
     /**
      * @param string $class
      * @param string $id
      */
     public function setAggregate($class, $id)
     {
-        $this->aggregateClass = $class;
-        $this->aggregateId    = $id;
+        if (!$this->aggregateClass && !$this->aggregateId) {
+            $this->aggregateClass = $class;
+            $this->aggregateId    = $id;
+        }
     }
 }
