@@ -19,10 +19,13 @@
 namespace Somnambulist\DomainEvents;
 
 use Doctrine\Common\EventSubscriber;
+use Doctrine\ORM\Event\LifecycleEventArgs;
 use Doctrine\ORM\Event\PostFlushEventArgs;
 use Doctrine\ORM\Event\PreFlushEventArgs;
 use Doctrine\ORM\Events;
+use Somnambulist\Collection\Collection;
 use Somnambulist\DomainEvents\Contracts\RaisesDomainEvents;
+use Somnambulist\DomainEvents\Events\DomainEvent;
 
 /**
  * Class DomainEventListener
@@ -37,16 +40,36 @@ class DomainEventListener implements EventSubscriber
 {
 
     /**
-     * @var array|RaisesDomainEvents[]
+     * @var Collection|RaisesDomainEvents[]
      */
-    private $entities = [];
+    private $entities;
+
+    /**
+     * Constructor.
+     */
+    public function __construct()
+    {
+        $this->entities = new Collection();
+    }
 
     /**
      * @return array
      */
     public function getSubscribedEvents()
     {
-        return [Events::preFlush, Events::postFlush];
+        return [Events::prePersist, Events::preFlush, Events::postFlush];
+    }
+
+    /**
+     * @param LifecycleEventArgs $event
+     */
+    public function prePersist(LifecycleEventArgs $event)
+    {
+        $entity = $event->getEntity();
+
+        if ($entity instanceof RaisesDomainEvents) {
+            $this->entities->add($entity);
+        }
     }
 
     /**
@@ -58,11 +81,11 @@ class DomainEventListener implements EventSubscriber
 
         foreach ($uow->getIdentityMap() as $class => $entities) {
             if (!in_array(RaisesDomainEvents::class, class_implements($class))) {
-                continue;
+                continue; // @codeCoverageIgnore
             }
 
             foreach ($entities as $entity) {
-                $this->entities[] = $entity;
+                $this->entities->add($entity);
             }
         }
     }
@@ -72,18 +95,40 @@ class DomainEventListener implements EventSubscriber
      */
     public function postFlush(PostFlushEventArgs $event)
     {
-        $em  = $event->getEntityManager();
-        $evm = $em->getEventManager();
+        $em     = $event->getEntityManager();
+        $evm    = $em->getEventManager();
+        $events = new Collection();
 
+        /*
+         * Capture all domain events in this UoW and re-order for dispatch
+         */
         foreach ($this->entities as $entity) {
             $class = $em->getClassMetadata(get_class($entity));
 
-            foreach ($entity->releaseAndResetEvents() as $event) {
-                $event->setAggregate($class->name, $class->getSingleIdReflectionProperty()->getValue($entity));
-                $evm->dispatchEvent("on" . $event->getName(), $event);
+            foreach ($entity->releaseAndResetEvents() as $domainEvent) {
+                /** @var DomainEvent $domainEvent */
+                $domainEvent->setAggregate($class->name, $class->getSingleIdReflectionProperty()->getValue($entity));
+
+                $events->add($domainEvent);
             }
         }
 
-        $this->entities = [];
+        $events->sortUsing(function ($a, $b) {
+            /** @var DomainEvent $a */
+            /** @var DomainEvent $b */
+            return bccomp($a->getTime(), $b->getTime(), 6);
+        });
+
+        /*
+         * Events should now be in created order so they can be dispatched / published.
+         * If overriding this subscriber, fire messages to rabbitmq, beanstalk etc here
+         * or replace doctrine event manager with another event dispatcher.
+         */
+        $events->call(function ($event) use ($em, $evm) {
+            /** @var DomainEvent $event */
+            $evm->dispatchEvent('on' . $event->getName(), $event);
+        });
+
+        $this->entities->reset();
     }
 }

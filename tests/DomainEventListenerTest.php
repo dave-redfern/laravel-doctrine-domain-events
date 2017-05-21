@@ -119,4 +119,29 @@ class DomainEventListenerTest extends \PHPUnit_Framework_TestCase
 
         $this->assertCount(0, $entity->releaseAndResetEvents());
     }
+
+    /**
+     * @group listener
+     * @group domain-events
+     */
+    public function testFiresEventsInOrder()
+    {
+        $entity = new \MyEntity('test-id', 'test', 'bob', Carbon::now());
+
+        $entity->addRelated('example1', 'test-test1', Carbon::now());
+        $entity->addRelated('example2', 'test-test2', Carbon::now());
+        $entity->addRelated('example3', 'test-test3', Carbon::now());
+
+        $this->em->persist($entity);
+        $this->em->flush();
+
+        $expected  = "New item created with id: test-id, name: test, another: bob\n";
+        $expected .= "Added related entity with name: example1, another: test-test1 to entity id: test-id\n";
+        $expected .= "Added related entity with name: example2, another: test-test2 to entity id: test-id\n";
+        $expected .= "Added related entity with name: example3, another: test-test3 to entity id: test-id\n";
+
+        $this->expectOutputString($expected);
+
+        $this->assertCount(0, $entity->releaseAndResetEvents());
+    }
 }

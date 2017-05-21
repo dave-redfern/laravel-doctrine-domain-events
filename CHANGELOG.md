@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+2017-05-21
+----------
+
+Changed:
+
+ * Changed listener to order events by create time
+ * Added requirement of bcmath for microtime comparisons
+ * Added prePersist listener to capture un-managed entities
+
 2017-03-31
 ----------
 

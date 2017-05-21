@@ -9,7 +9,8 @@ on the Gist and blog posts by Benjamin Eberlei:
 
 ### Requirements
 
- * PHP 5.5+
+ * PHP 5.6+
+ * bcmath extension
  * Laravel 5.2+
  * laravel-doctrine/orm
 
@@ -47,7 +48,7 @@ need to manage changes to you entity through specific methods, for example:
  * revokePermissions()
  * publishStory()
 
-Internally, after updating the entity state, simply call: `$this->raise(new NameOfEvent([]))`
+Internally, after updating the entity state, call: `$this->raise(new NameOfEvent([]))`
 and pass any specific parameters into the event that you want to make available to the
 listener. This could be the old vs new or the entire entity reference, it is entirely
 up to you.
@@ -61,26 +62,46 @@ up to you.
         $this->raise(new MyEntityCreatedEvent(['id' => $id, 'name' => $name, 'another' => $another]));
     }
 
+Generally it is better to not raise events in the constructor but instead to use named
+constructors for primary object creation:
+
+    private function __construct($id, $name, $another, $createdAt)
+    {
+        $this->id        = $id;
+        $this->name      = $name;
+        $this->another   = $another;
+        $this->createdAt = $createdAt;
+        $this->raise(new MyEntityCreatedEvent(['id' => $id, 'name' => $name, 'another' => $another]));
+    }
+    
+    public static function create($id, $name, $another)
+    {
+        $entity = new static($id, $name, $another, new DateTime());
+        $entity->raise(new MyEntityCreatedEvent(['id' => $id, 'name' => $name, 'another' => $another]));
+        
+        return $entity;
+    }
+
 ### Firing Domain Events
 
 This implementation includes a Doctrine subscriber that will listen for entities that
-implement the RaisesDomainEvent interface and then ensure that `releaseAndResetEvents()`
+implement the RaisesDomainEvent interface and then ensures that `releaseAndResetEvents()`
 is called.
 
  * __Note:__ before v. 0.6 the subscriber listened for LifeCycle events and could miss
    events if the Aggregate root was not modified at the same time as the child entities.
  
  * __Note:__ it is not required to use the `DomainEventListener` subscriber. You can
-   implement your own event dispatcher, use your another entirely (the frameworks) and
-   then manually trigger the domain events by flushing the changes and then manually
+   implement your own event dispatcher, use another dispatcher entirely (the frameworks)
+   and then manually trigger the domain events by flushing the changes and then manually
    calling `releaseAndResetEvents` and dispatching the events.
    
    If you do this note that the aggregate root class and primary identifier (if used)
    will not be set automatically. You will need to update your code to set these if
    you intend to use them.
 
-To use the included listener, simply add it to your list of event subscribers in the
-Doctrine configuration. This is per entity manager.
+To use the included listener, add it to your list of event subscribers in the Doctrine
+configuration. This is per entity manager.
 
  * __Note:__ to use listeners with domain events that rely on Doctrine repositories
    it is necessary to defer loading those subscribers until after Doctrine has been
