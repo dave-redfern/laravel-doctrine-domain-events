@@ -1,3 +1,8 @@
+# Replaced with https://github.com/dave-redfern/somnambulist-domain
+
+This project has been replaced with a generic domain library that combines several packages into one
+for easier maintenace.
+
 ## Domain Events for Laravel-Doctrine ORM
 
 Adds support for Domain Events to Doctrine entities. This package is inspired by and based
